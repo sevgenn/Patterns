@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% include "includes/inc_navigation.html" %}
+
+{% block content %}
+    <h1>Hello, {{ client_name }}!</h1>
+
+    <form action="" method="POST" class="col-4 mx-auto mt-5">
+
+      <div class="mb-3">
+        <label for="name" class="form-label">Enter your name:</label>
+        <input type="text" class="form-control" id="name" name="client_name">
+      </div>
+
+      <div class="mb-3">
+        <label for="topic" class="form-label">Enter a theme of message:</label>
+        <input type="text" class="form-control" id="topic" name="topic">
+      </div>
+
+      <div class="mb-3">
+        <label for="msg" class="form-label">Enter your message:</label>
+        <textarea class="form-control" id="msg" name="client_message"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label for="email" class="form-label">Enter your email:</label>
+        <input type="email" class="form-control" id="email" name="client_email">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Submit</button>
+
+    </form>
+{% endblock content %}
