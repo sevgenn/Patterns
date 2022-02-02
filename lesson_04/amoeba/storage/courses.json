@@ -1,0 +1,18 @@
+[
+  {
+    "course_category": "online",
+    "course_name": "JS"
+  },
+  {
+    "course_category": "online",
+    "course_name": "HTML"
+  },
+  {
+    "course_category": "online",
+    "course_name": "Python"
+  },
+  {
+    "course_category": "online",
+    "course_name": "Java"
+  }
+]

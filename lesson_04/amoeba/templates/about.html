@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>This is an About Page!</h1>
+    <div>
+        <p>Если в адресной строке добавить GET-запрос типа .../about?param1=something&ampparam2=something, то получим результат
+            поиска:</p>
+        <h1>{{ result }}</h1>
+    </div>
+{% endblock content %}

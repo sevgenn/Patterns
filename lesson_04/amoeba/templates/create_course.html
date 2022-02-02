@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Create a new course</h1>
+    <form action="" method="POST" class="col-4 mx-5 mt-5">
+
+      <div class="mb-3">
+        <label for="course_category" class="form-label">Enter a course category (online or offline):</label>
+        <input type="text" class="form-control" id="course_category" name="course_category">
+      </div>
+
+      <div class="mb-3">
+        <label for="course_name" class="form-label">Enter a course name:</label>
+        <input type="text" class="form-control" id="course_name" name="course_name">
+      </div>
+
+      <button type="submit" class="btn btn-primary add_course">Add course</button>
+
+    </form>
+{% endblock content %}

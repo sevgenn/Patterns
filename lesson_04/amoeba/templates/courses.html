@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>Online courses</h2>
+    <div class="list-group">
+        {% for course in course_list %}
+            <a href="#" class="list-group-item list-group-item-action">{{ course }}</a>
+        {% endfor %}
+    </div>
+{% endblock content %}
