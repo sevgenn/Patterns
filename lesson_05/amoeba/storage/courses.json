@@ -1,0 +1,17 @@
+[
+  {
+    "course_type": "online",
+    "course_name": "Django",
+    "course_category": "Python"
+  },
+  {
+    "course_type": "online",
+    "course_name": "Flask",
+    "course_category": "Python"
+  },
+  {
+    "course_type": "online",
+    "course_name": "FastAPI",
+    "course_category": "Python"
+  }
+]

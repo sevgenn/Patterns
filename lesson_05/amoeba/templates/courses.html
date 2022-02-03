@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Courses
+{% endblock title %}
+
+
+{% block content %}
+    <h2>Categories</h2>
+    <div class="list-group">
+        {% for category in categories_list %}
+            <a href="#" class="list-group-item list-group-item-action">{{ category }}</a>
+            <p>Quantity of courses: {{ category.count_courses }}</p>
+        {% endfor %}
+    </div>
+    <hr>
+
+    <h2>Online courses</h2>
+    <div class="list-group">
+        {% for course in courses_list %}
+            <a href="#" class="list-group-item list-group-item-action">{{ course }}</a>
+        {% endfor %}
+    </div>
+{% endblock content %}

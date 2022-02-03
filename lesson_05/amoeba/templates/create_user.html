@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Admin | Create User
+{% endblock title %}
+
+{% block content %}
+<h1 class="mt-5">Create a new user</h1>
+    <form action="" method="POST" class="col-4 mx-5 mt-5">
+
+      <div class="mb-3">
+        <label for="user_category" class="form-label">Enter an user category (teacher or student):</label>
+        <input type="text" class="form-control" id="user_category" name="user_category">
+      </div>
+
+      <div class="mb-3">
+        <label for="user_name" class="form-label">Enter an user name:</label>
+        <input type="text" class="form-control" id="user_name" name="user_name">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Add user</button>
+
+    </form>
+{% endblock content %}
