@@ -9,7 +9,7 @@ from amoeba.response import Response
 from amoeba.fronts import BaseController
 from logger import Logger, LogDecorator
 
-logger = Logger()
+logger = Logger('main')
 
 class Amoeba:
     """Основной класс приложения."""
@@ -53,6 +53,7 @@ class Amoeba:
         """Инициализирует соответствующую адресу вьюху."""
         raw_url = environ['PATH_INFO']
         view = self._find_view(raw_url)
+        logger.log()
         return view()
 
     def _get_request(self, environ: dict) -> Request:

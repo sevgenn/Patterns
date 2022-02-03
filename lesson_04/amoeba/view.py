@@ -5,12 +5,10 @@ from amoeba.request import Request
 from amoeba.response import Response
 from amoeba.templator import render
 from amoeba.storage_to_json import StorageManager
-from models.courses_models import CourseFactory
-from models.users_models import *
 from models.site_models import Site
 from logger import Logger, LogDecorator
 
-logger = Logger()
+logger = Logger('view')
 site = Site()
 
 
@@ -19,6 +17,7 @@ class Home(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
         content = {'title': 'Home', 'bgcolor': 'cyan', 'session_id': request.session_id}
         body = render(request, 'home.html', **content)
+        logger.log()
         return Response(request, body=body)
 
 
@@ -76,12 +75,11 @@ class CreateCourse(View):
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         # print(request.POST)
-        course_category = request.POST.get('course_category')
-        course_name = request.POST.get('course_name')
-        new_course = CourseFactory.create_course(course_category, course_name)
-        # Добавляется новый класс-курс
-        site.add_course(new_course)
         content = request.POST
+        course_category = content.get('course_category')
+        course_name = content.get('course_name')
+        # Добавляется новый объект класса Course:
+        site.create_course(course_category, course_name)
         # Запись в json-файл:
         file_name = 'courses.json'
         StorageManager.add_to_json(request, file_name, content)
@@ -97,23 +95,14 @@ class CreateUser(View):
         return Response(request, body=body)
 
     def post(self, request: Request, *args, **kwargs) -> Response:
-        user_category = request.POST.get('user_category')
-        user_name = request.POST.get('user_name')
-        user_creator = UserFactory.create_user(user_category)
-        # Добавляется новый класс-user:
-        if user_category == 'teacher':
-            new_user = user_creator.create_teacher(user_name)
-            site.add_teacher(new_user)
-        elif user_category == 'student':
-            new_user = user_creator.create_student(user_name)
-            site.add_student(new_user)
-        else:
-            Response.status_code = 400
         content = request.POST
+        user_category = content.get('user_category')
+        user_name = content.get('user_name')
+        # Добавляется новый объект класса User:
+        site.create_user(user_category, user_name)
         # Запись в json-файл:
         file_name = user_category + 's.json'
         StorageManager.add_to_json(request, file_name, content)
-
         body = render(request, 'create_user.html', **content)
         return Response(request, body=body)
 

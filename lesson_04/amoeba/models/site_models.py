@@ -1,5 +1,8 @@
 """Модуль, описывающий модель сайта."""
 
+from models.users_models import UserFactory
+from models.courses_models import CourseFactory
+
 class Site:
     """Класс, описывающий сайт."""
     def __init__(self):
@@ -11,8 +14,9 @@ class Site:
         """Возвращает список курсов."""
         return self._courses
 
-    def add_course(self, course):
+    def create_course(self, category: str, name: str):
         """Добавляет курс в список."""
+        course = CourseFactory.create_course(category, name)
         self._courses.append(course)
 
     def get_course(self, name):
@@ -22,26 +26,31 @@ class Site:
                 return item
         return None
 
+    def create_user(self, category: str, name: str):
+        """Добавляет ппользователя в список студентов или преподавателей."""
+        user = UserFactory.create_user(category, name)
+
+        if category == 'student':
+            self._students.append(user)
+        else:
+            self._teachers.append(user)
+
     def get_teachers(self):
         """Возвращает список преподавателей."""
         return self._teachers
-
-    def add_teacher(self, teacher):
-        """Добавляет преподавателя в список."""
-        self._teachers.append(teacher)
 
     def get_students(self):
         """Возвращает список преподавателей."""
         return self._students
 
-    def add_student(self, student):
-        """Добавляет преподавателя в список."""
-        self._students.append(student)
-
 
 if __name__ == '__main__':
     site = Site()
 
+    site.create_course('online', 'rt')
+    print(site.get_courses()[0])
+    print(site.get_course('rt'))
 
-    site.add_courses('rt')
-    print(site.get_courses())
+    site.create_user('student', 'Bob')
+    print(site.get_students()[0].name)
+    print(site.get_students()[0].__dict__)
