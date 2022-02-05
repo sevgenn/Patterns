@@ -1,5 +1,3 @@
-"""Модуль, определяющий создание и поведение моделей курсов."""
-
 import abc
 from patterns.prototypes import PrototypeMixin
 
@@ -72,18 +70,7 @@ class Course(PrototypeMixin, Component):
 
 
 class Category(Composite):
-    count = -1
-
-    def __init__(self, name, parent: Component=None):
-        super().__init__(name, parent)
-        self.__class__.count += 1
-        self.id = self.count
-
-    @property
-    def courses(self):
-        """Возвращает список курсов в данной категории."""
-        self.courses_list = [item for  item in self.children if not item.is_composite()]
-        return self.courses_list
+    pass
 
 
 class CategoryFactory:
@@ -113,10 +100,56 @@ class CourseFactory:
         return cls.types[type_](name)
 
 
-if __name__ == '__main__':
-    course1 = CourseFactory.create_course('online', 'Python')
-    print(type(course1))
-    print(course1)
+class Site:
+    """Класс, описывающий сайт."""
+    def __init__(self):
+        self._courses = []
+        self._course_categories = []
+        self._teachers = []
+        self._students = []
 
-    course2 = CourseFactory.create_course('offline', 'Java')
-    print(course2)
+    def create_course(self, type: str, name: str, category: Category):
+        """Добавляет курс в список."""
+        new_course = CourseFactory.create_course(type, name)
+        category.add_children(new_course)
+        self._courses.append(new_course)
+        return new_course
+
+    def create_course_category(self, name: str, parent: Component=None):
+        """Создает ровую категорию курсов."""
+        new_category = CategoryFactory.create_category(name, parent)
+        self._course_categories.append(new_category)
+        return new_category
+
+    def get_courses(self):
+        """Возвращает список курсов."""
+        return self._courses
+
+    def get_course(self, name):
+        """Вщзвращает курс по названию."""
+        for item in self._courses:
+            if item.name == name:
+                return item
+        return None
+
+    def get_categories(self):
+        """Возвращает список категорий курсов."""
+        return self._course_categories
+
+
+if __name__ == '__main__':
+    site = Site()
+    cat1 = site.create_course_category('programming')
+    cat2 = site.create_course_category('web', cat1)
+    cat3 = site.create_course_category('python', cat2)
+
+    course1 = site.create_course('online', 'django', cat3)
+    course2 = site.create_course('online', 'flask', cat3)
+    course3 = site.create_course('online', 'php', cat2)
+
+    cats = [item.name for item in site.get_categories()]
+    print(cats)
+    courses = [item.name for item in site.get_courses()]
+    print(courses)
+    print(cat2.__dict__)
+    print(cat1.count_children())

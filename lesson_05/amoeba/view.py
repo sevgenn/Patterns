@@ -14,6 +14,14 @@ logger = Logger('view')
 site = Site()
 routes = {}
 
+# Тестовые присвоения:
+cat1 = site.create_course_category('programming')
+cat2 = site.create_course_category('web', cat1)
+cat3 = site.create_course_category('python', cat2)
+course1 = site.create_course('online', 'django', cat3)
+course2 = site.create_course('online', 'flask', cat3)
+course3 = site.create_course('online', 'php', cat2)
+
 
 @Router(routes, '/')
 @DebugDecorator()
@@ -123,17 +131,8 @@ class CreateUser(View):
 @DebugDecorator()
 class Courses(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
-        courses_list = []
-        courses = StorageManager.get_from_json(request, 'courses.json')
-        # print(courses_list)
-        categories_list = []
-        categories = StorageManager.get_from_json(request, 'course_categories.json')
-        for item in courses:
-            courses_list.append(item['course_name'])
-        for item in categories:
-            categories_list.append(item['category_name'])
+        categories_list = [(item, item.courses) for item in site.get_categories()]
         content = {
-            'courses_list': courses_list,
             'categories_list': categories_list
         }
 
@@ -141,21 +140,33 @@ class Courses(View):
         return Response(request, body=body)
 
 
+@Router(routes, '/admin/existing_categories')
+@DebugDecorator()
+class ExistingCategories(View):
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        categories_list = [(item.name, item.id) for item in site.get_categories()]
+        content = {
+            'categories_list': categories_list
+        }
+        body = render(request, 'existing_categories.html', **content)
+        return Response(request, body=body)
+
+
 @Router(routes, '/admin/create_category')
 @DebugDecorator()
 class CreateCategory(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
+
         body = render(request, 'create_category.html')
         return Response(request, body=body)
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         content = request.POST
+        parent_name = content.get('parent_category')
+        parent_object = site.get_category_by_name(parent_name)
         category_name = content.get('category_name')
-        sub_category = content.get('sub_category')
         # Добавляется новый объект класса CourseCategory:
-        site.create_course_category(category_name, sub_category)
-        # Запись в json-файл:
-        file_name = 'course_categories.json'
-        StorageManager.add_to_json(request, file_name, content)
+        site.create_course_category(category_name, parent_object)
+
         body = render(request, 'create_category.html', **content)
         return Response(request, body=body)

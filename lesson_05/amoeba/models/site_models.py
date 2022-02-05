@@ -2,7 +2,7 @@
 
 from typing import Type, List
 from models.users_models import Teacher, Student, UserFactory
-from models.courses_models import Course, CourseFactory, CourseCategory
+from models.courses_models import Component, Course, Category, CourseFactory, CategoryFactory
 
 class Site:
     """Класс, описывающий сайт."""
@@ -12,15 +12,18 @@ class Site:
         self._teachers = []
         self._students = []
 
-    def create_course(self, type: str, name: str, category: str):
+    def create_course(self, type: str, name: str, category: Category):
         """Добавляет курс в список."""
-        new_course = CourseFactory.create_course(type, name, category)
+        new_course = CourseFactory.create_course(type, name)
+        category.add_children(new_course)
         self._courses.append(new_course)
+        return new_course
 
-    def create_course_category(self, name: str, category: str = ''):
+    def create_course_category(self, name: str, parent: Component=None):
         """Создает ровую категорию курсов."""
-        new_category = CourseCategory(name, category)
+        new_category = CategoryFactory.create_category(name, parent)
         self._course_categories.append(new_category)
+        return new_category
 
     def create_user(self, category: str, name: str):
         """Добавляет ппользователя в список студентов или преподавателей."""
@@ -41,9 +44,25 @@ class Site:
                 return item
         return None
 
-    def get_categories(self) -> List[Type[CourseCategory]]:
+    def get_categories(self) -> List[Type[Category]]:
         """Возвращает список категорий курсов."""
         return self._course_categories
+
+    def get_category_by_id(self, id: str) -> Type[Category]:
+        """Возвращает категорию по id."""
+        for item in self._course_categories:
+            if item.id == id:
+                return item
+            else:
+                return None
+
+    def get_category_by_name(self, name: str) -> Type[Category]:
+        """Возвращает категорию по имени."""
+        for item in self._course_categories:
+            if item.name == name:
+                return item
+            else:
+                return None
 
     def get_teachers(self) -> List[Type[Teacher]]:
         """Возвращает список преподавателей."""
@@ -57,9 +76,25 @@ class Site:
 if __name__ == '__main__':
     site = Site()
 
-    site.create_course('online', 'rt')
-    print(site.get_courses()[0])
-    print(site.get_course('rt'))
+    cat1 = site.create_course_category('programming')
+    cat2 = site.create_course_category('web', cat1)
+    cat3 = site.create_course_category('python', cat2)
+
+    course1 = site.create_course('online', 'django', cat3)
+    course2 = site.create_course('online', 'flask', cat3)
+
+    course3 = site.create_course('online', 'php', cat2)
+
+    cats = [item.name for item in site.get_categories()]
+    print(cats)
+    courses = [item.name for item in site.get_courses()]
+    print(courses)
+    print(cat2.__dict__)
+    print('<Quantity>:', cat1.count_children())
+
+    print('<All courses>:', site.get_courses())
+    print('<One course>:', site.get_courses()[1])
+
 
     site.create_user('student', 'Bob')
     print(site.get_students()[0].name)

@@ -9,15 +9,11 @@
     <form action="" method="POST" class="col-4 mx-5 mt-5">
 
       <div class="mb-3">
-        <label for="catgory_name" class="form-label">Enter a category:</label>
+        <label for="parent_category" class="form-label">Enter a parent category (if exists):</label>
+        <input type="text" class="form-control" id="parent_category" name="parent_category">
+        <label for="category_name" class="form-label">Enter a category:</label>
         <input type="text" class="form-control" id="category_name" name="category_name">
       </div>
-
-      <div class="mb-3">
-        <label for="sub_catgory" class="form-label">Enter a new subcategory if exists:</label>
-        <input type="text" class="form-control" id="sub_category" name="sub_category">
-      </div>
-
 
       <button type="submit" class="btn btn-primary add_course">Add category</button>
 
