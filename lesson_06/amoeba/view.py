@@ -10,11 +10,12 @@ from amoeba.storage_to_json import StorageManager
 from models.site_models import Site
 from models.logger import Logger, WriterToConsole, WriterToFile
 from models.debuger import DebugDecorator
-from models.send_json import CoursesToJson
+from models.get_json import CoursesToJson
 
 console_writer = WriterToConsole()
 file_writer = WriterToFile('vew')
 logger = Logger('view')
+logger.writer = console_writer
 site = Site()
 routes = {}
 
@@ -34,15 +35,13 @@ site.get_students()[0].add_studied_courses(course1)
 site.get_students()[0].add_studied_courses(course2)
 #######################################################
 
-
 @Router(routes, '/')
 @DebugDecorator()
 class Home(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
         content = {'bgcolor': 'cyan', 'session_id': request.session_id}
         body = render(request, 'home.html', **content)
-        logger.log('class Home', file_writer)
-        logger.log('class Home', console_writer)
+        logger.log('class Home')
         return Response(request, body=body)
 
 
@@ -71,6 +70,7 @@ class Contacts(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
         content = {'bgcolor': 'purple', 'client_name': 'GUEST'}
         body = render(request, 'contacts.html', **content)
+        logger.log('class Contacts')
         return Response(request, body=body)
 
     def post(self, request: Request, *args, **kwargs) -> Response:
@@ -110,7 +110,8 @@ class CreateCourse(View):
         course_category = content.get('course_category')
         course_name = content.get('course_name')
         # Добавляется новый объект класса Course:
-        site.create_course(course_type, course_name, course_category)
+        category = site.get_category_by_name(course_category)
+        site.create_course(course_type, course_name, category)
         # Запись в json-файл:
         file_name = 'courses.json'
         StorageManager.add_to_json(request, file_name, content)
@@ -144,11 +145,19 @@ class CreateUser(View):
 @DebugDecorator()
 class ExistingCategories(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
-        categories_list = [(item.name, item.id) for item in site.get_categories()]
+        categories_list = [item for item in site.get_categories()]
         content = {
             'categories_list': categories_list
         }
         body = render(request, 'existing_categories.html', **content)
+        return Response(request, body=body)
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        upper_category = request.POST.get('upper_category')
+        content = {
+            'upper_category': upper_category
+        }
+        body = render(request, 'create_category.html', **content)
         return Response(request, body=body)
 
 
@@ -179,7 +188,7 @@ class CreateCategory(View):
 @DebugDecorator()
 class Courses(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
-        categories_list = [(item, item.courses) for item in site.get_categories()]
+        categories_list = [item for item in site.get_categories()]
         content = {
             'categories_list': categories_list
         }
@@ -235,5 +244,48 @@ class AddToCourse(View):
 @DebugDecorator()
 class ApiCourses(View):
     def get(self, request: Request, *args, **kwargs) -> Response:
-        content = CoursesToJson(site).send_json()
+        content = CoursesToJson(site).get_json()
         return Response(request, body=content)
+
+
+@Router(routes, '/admin/existing_courses')
+@DebugDecorator()
+class ExistingCourses(View):
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        courses_list = [item for item in site.get_courses()]
+        content = {
+            'courses_list': courses_list
+        }
+        body = render(request, 'existing_courses.html', **content)
+        return Response(request, body=body)
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        existing_course_name = request.POST.get('existing_course')
+        existing_course = site.get_course_by_name(existing_course_name)
+        new_course = existing_course.clone()
+        site.add_course(new_course)
+
+        content ={
+            'course': new_course
+        }
+
+        body = render(request, 'edit_course.html', **content)
+        return Response(request, body=body)
+
+
+@Router(routes, '/admin/course')
+@DebugDecorator()
+class EditCourse(View):
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        body = render(request, 'edit_course.html')
+        return Response(request, body=body)
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        course = site.get_course_by_name('name')
+        print(course.name)
+        data = request.POST.get()
+        course.name = data['name']
+        course.parent = data['category_name']
+
+        body = render(request, 'existing_courses.html')
+        return Response(request, body=body)         # AttributeError: 'NoneType' object has no attribute 'clone'

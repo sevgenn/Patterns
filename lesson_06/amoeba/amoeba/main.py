@@ -7,9 +7,7 @@ from amoeba.exceptions import NotAllowed
 from amoeba.request import Request
 from amoeba.response import Response
 from amoeba.fronts import BaseController
-from models.logger import Logger
 
-logger = Logger('main')
 
 class Amoeba:
     """Основной класс приложения."""

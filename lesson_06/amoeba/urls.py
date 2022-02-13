@@ -13,4 +13,7 @@ urlpatterns = {
     '/admin/students': Students,
     '/admin/add_to_course': AddToCourse,
     '/api/courses': ApiCourses,
+    '/admin/existing_categories': ExistingCategories,
+    '/admin/existing_courses': ExistingCourses,
+    '/admin/course': Course,
 }

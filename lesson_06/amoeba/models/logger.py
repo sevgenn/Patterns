@@ -8,6 +8,8 @@ from abc import ABC, abstractmethod
 import os
 import traceback
 from datetime import datetime
+from typing import Type
+
 from settings import settings
 from patterns.singletones import Singletone
 
@@ -30,28 +32,38 @@ class WriterToFile(AbstractWriter):
         log_name = f'{self.name}.log'
         return os.path.join(log_dir, log_name)
 
-    def write(self, text: str):
+    def write(self, text: str) -> None:
         with open(self.path, 'a') as file_write:
             file_write.write(text + '\n')
 
 
 class WriterToConsole(AbstractWriter):
     """Класс, выводящий запись в консоль."""
-    def write(self, text: str):
+    def write(self, text: str) -> None:
         print(text)
 
 
 class Logger(metaclass=Singletone):
     """Класс-логгер."""
-    def __init__(self, name: str):
+    def __init__(self, name: str, writer=None):
         self.name = name
+        self._writer = writer
 
-    def log(self, data, writer):
+    @property
+    def writer(self) -> Type[AbstractWriter]:
+        return self._writer
+
+    @writer.setter
+    def writer(self, writer: Type[AbstractWriter]):
+        """Позволяет выбрать writer при конкретном вызове."""
+        self._writer = writer
+
+    def log(self, data):
         """Записывает логи в соответствии с методом (стратегией)."""
         if not data:
             data = f'logging function {traceback.extract_stack()[-2][2]}'
         text = f'log <==> {datetime.now()} <==> {data}'
-        writer.write(text)
+        self.writer.write(text)
 
 
 class LogDecorator:

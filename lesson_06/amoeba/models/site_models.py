@@ -12,15 +12,18 @@ class Site:
         self._teachers = []
         self._students = []
 
+    def add_course(self, course: Course):
+        """Добавляет новый курс."""
+        self._courses.append(course)
+
     def create_course(self, type: str, name: str, category: Category):
         """Добавляет курс в список."""
-        new_course = CourseFactory.create_course(type, name)
-        category.add_children(new_course)
-        self._courses.append(new_course)
+        new_course = CourseFactory.create_course(type, name, category)
+        self.add_course(new_course)
         return new_course
 
     def create_course_category(self, name: str, parent: Component=None):
-        """Создает ровую категорию курсов."""
+        """Создает новую категорию курсов."""
         new_category = CategoryFactory.create_category(name, parent)
         self._course_categories.append(new_category)
         return new_category
@@ -41,6 +44,13 @@ class Site:
         """Вщзвращает курс по названию."""
         for item in self._courses:
             if item.name == name:
+                return item
+        return None
+
+    def get_course_by_id(self, id) -> Type[Course]:
+        """Вщзвращает курс по ID."""
+        for item in self._courses:
+            if item.id == id:
                 return item
         return None
 

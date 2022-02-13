@@ -1,27 +1,23 @@
 {% extends 'base.html' %}
 
 {% block title %}
-Admin | Existing Categories
+    Admin | Existing Categories
 {% endblock title %}
 
 {% block content %}
-    <h2>Categories</h2>
+    <h2 class="mx-3">Categories</h2>
     <div class="list-group">
         {% for category in categories_list %}
-            <a href="#" class="list-group-item list-group-item-action" data-id="{{ category[1] }}">{{ category[0] }}</a>
-            <form action="/admin/create_category/" method="GET" class="mt-3">
-              <div class="d-grid gap-2 col-2 mx-3">
-                  <button class="btn btn-primary" type="submit" value="{{ category[1] }}">Add a new category</button>
-              </div>
-            </form>
+            <div class="d-grid gap-2 col-2 mx-3">
+                <form action="/admin/create_category/" method="POST" class="mt-3">
+                <a href="#" class="list-group-item list-group-item-action">{{ category.name }}</a>
+                <p>Quantity of courses: {{ category.count_children() }}</p>
 
-            <form action="/admin/create_course" method="GET" class="mt-3">
-              <div class="d-grid gap-2 col-2 mx-3">
-                  <button class="btn btn-primary" type="submit">Add a new course</button>
-              </div>
-            </form>
-
-            <p>Quantity of courses: {{ category.count_children }}</p>
+                  <div>
+                      <button class="btn btn-primary col-12" type="submit" name="upper_category" value="{{ category.name }}">Add a new sub-category</button>
+                  </div>
+                </form>
+            </div>
         {% endfor %}
     </div>
     <hr>

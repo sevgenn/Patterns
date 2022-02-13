@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block title %}
-    Categories
+    Courses
 {% endblock title %}
 
 
@@ -27,24 +27,26 @@
       </div>
     </form>
 
-    <h1 class="mx-5 mt-5">Courses:</h1>
-    <div class="list-group mx-5 mt-2">
-        <ul class="list-group category-wrapper">
-            {% for category in categories_list %}
+    <div class="d-grid gap-2 col-4 mx-3">
+        <h1 class="mx-5 mt-5">Courses:</h1>
+        <div class="list-group mx-5 mt-2">
+            <ul class="list-group category-wrapper">
+                {% for category in categories_list %}
 
-              <li class="list-group-item mt-3">{{ category[0].name }} (courses: {{ category[0].count_children() }})</li>
+                  <li class="list-group-item mt-3">{{ category.name }} (courses: {{ category.count_children() }})</li>
 
-                {% if category[1] %}
+                    {% if category %}
 
-                    {% for course in category[1] %}
-                        <ul class="list-group courses-wrapper">
-                            <a href="" class="list-group-item course-wrapper">{{ course.name }}</a>
-                        </ul>
-                    {% endfor %}
+                        {% for course in category %}
+                            <ul class="list-group courses-wrapper">
+                                <a href="" class="list-group-item course-wrapper">{{ course.name }}</a>
+                            </ul>
+                        {% endfor %}
 
-                {% endif %}
-            {% endfor %}
-        </ul>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
     </div>
 
 {% endblock content %}
