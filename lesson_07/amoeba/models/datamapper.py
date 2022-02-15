@@ -1,45 +1,82 @@
-import threading
 import sqlite3
-
-from users_models import User
-from courses_models import Category, Course
-from site_models import Site
-
-from courses_models import ListIterator, Component, Composite
+import abc
+from typing import List, Type
+from mapper import UnitOfWork
 from collections.abc import Iterator, Iterable
+
 from patterns.prototypes import PrototypeMixin
+from mapper import DomainObject
+
+#############################  CATEGORIES-COURSES MODELS  #########################################
+
+class ListIterator(Iterator):
+    cursor: int = 0
+
+    def __init__(self, collection: Type[List]):
+        self._collection = collection
+
+    def __next__(self):
+        try:
+            value = self._collection[self.cursor]
+            self.cursor += 1
+        except IndexError:
+            raise StopIteration()
+        return value
 
 
-class DomainObject:
-    def mark_new(self):
-        UnitOfWork.get_current().register_new(self)
-
-    def mark_dirty(self):
-        UnitOfWork.get_current().register_dirty(self)
-
-    def mark_removed(self):
-        UnitOfWork.get_current().register_removed(self)
-
-
-#################################################################################
-class Student(User, DomainObject):
-    count = -1
-
-    def __init__(self, params: dict):
-        super().__init__(params)
-        self.__class__.count += 1
-        self.id = self.count
-        self._studied_courses = []
-
+class Component(abc.ABC):
     @property
-    def studied_courses(self):
-        return self._studied_courses
+    def parent(self):
+        return self._parent
 
-    def add_studied_courses(self, course):
-        self._studied_courses.append(course)
+    @parent.setter
+    def parent(self, parent):
+        self._parent = parent
 
-    def __str__(self):
-        return f'{self.id} - {self.name} - {self.category}'
+    @abc.abstractmethod
+    def is_composite(self):
+        pass
+
+    @abc.abstractmethod
+    def add_to_parent(self):
+        if self.parent:
+            self.parent.children.append(self)
+
+    def add_children(self, component):
+        pass
+
+    def remove_children(self, component):
+        pass
+
+
+class Composite(Component):
+    def __init__(self, name, parent: Component=None):
+        self.name = name
+        self.parent = parent
+        self.children = []
+        self.add_to_parent()
+
+    def add_to_parent(self):
+        if self.parent:
+            self.parent.children.append(self)
+
+    def add_children(self, component: Component):
+        self.children.append(component)
+        component.parent = self
+
+    def remove_children(self, component: Component):
+        self.children.remove(component)
+        component.parent = None
+
+    def is_composite(self) -> bool:
+        return True
+
+    def count_children(self):
+        quantity = len([item for item in self.children if not item.is_composite()])
+        for item in self.children:
+            if item.is_composite():
+                quantity += item.count_children()
+        return quantity
 
 
 class Category(Composite, Iterable, DomainObject):
@@ -86,112 +123,244 @@ class Course(PrototypeMixin, Component, Iterable, DomainObject):
     def __str__(self):
         return f'Course {self.name}'
 
-########################################################################
+
+class CategoryFactory:
+
+    @classmethod
+    def create_category(cls, name: str, parent: Category=None):
+        category = Category(name, parent)
+        return category
 
 
-class Mapper:
-    tables = {
-        'students': Student,
-        'categories': Category,
-        'courses': Course
+class OnlineCourse(Course):
+    pass
+
+
+class OfflineCourse(Course):
+    pass
+
+
+class CourseFactory:
+    types = {
+        'online': OnlineCourse,
+        'offline': OfflineCourse
     }
 
-    def __init__(self, connection, tablename):
-        self.connection = connection
-        self.cursor = connection.cursor
-        self.table = tablename
+    @classmethod
+    def create_course(cls, type_, name, parent: Category):
+        return cls.types[type_](name, parent)
 
-    def find_by_id(self, id):
-        statement = f'SELECT * FROM {self.table} WHERE id=?'
-        self.cursor.execute(statement, (id,))
-        result = self.cursor.fetchone()
-        if result:
-            return self.tables[self.table](*result)
-        else:
-            raise RecordNotFoundException(f'Record with id={id} not found')
-
-    def insert(self, obj):
-        statement = f'INSERT INTO {self.table} (id, name) VALUES (?, ?)'
-        self.cursor.execute(statement, (obj.id, obj.name))
-        try:
-            self.connection.commit()
-        except Exception as err:
-            raise DbInsertException(err.args)
-
-    def update(self, obj):
-        statement  = f'UPDATE {self.table} SET name=? WHERE id=?'
-        self.cursor.execute(statement, (obj.name, obj.id))
-        try:
-            self.connection.commit()
-        except Exception as err:
-            raise DbUpdateException(err.args)
-
-    def remove(self, obj):
-        statement = f'DELETE FROM {self.table} WHERE id=?'
-        self.cursor.execute(statement, (obj.id,))
-        try:
-            self.connection.commit()
-        except Exception as err:
-            raise DbRemoveException(err.args)
+#############################  USER MODELS  #########################################
 
 
-class MapperRegistry:
-    @staticmethod
-    def get_mapper(obj):
-        if isinstance(obj, Student):
-            return Mapper(connection, tablename='students')
-        if isinstance(obj, Category):
-            return Mapper(connection, tablename='categories')
-        if isinstance(obj, Course):
-            return Mapper(connection, tablename='courses')
+class User(DomainObject):
+    def __init__(self, params: dict):
+        self.name = None
+        self.category = None
+        for k, v in params.items():
+            self.__setattr__(k, v)
+
+    def __str__(self):
+        return f'{self.name} - {self.category}'
 
 
-class UnitOfWork:
-    current = threading.local()
-
+class UserBuilder:
     def __init__(self):
-        self.new_objects = []
-        self.dirty_objects = []
-        self.removed_objects = []
+        self.params = {}
 
-    def register_new(self, obj):
-        self.new_objects.append(obj)
+    @property
+    def personal_info(self):
+        return PersonalInfoBuilder(self)
 
-    def register_dirty(self, obj):
-        self.dirty_objects.append(obj)
+    @property
+    def special_info(self):
+        return SpecialInfoBuilder(self)
 
-    def register_removed(self, obj):
-        self.removed_objects.append(obj)
+    def build(self):
+        user = User(self.params)
+        return user
 
-    def commit(self):
-        self.insert()
-        self.update()
-        self.remove()
 
-    def insert(self):
-        for obj in self.new_objects:
-            MapperRegistry.get_mapper(obj).insert(obj)
+class PersonalInfoBuilder:
+    """Личная общая для всех информация."""
 
-    def update(self):
-        for obj in self.dirty_objects:
-            MapperRegistry.get_mapper(obj).update(obj)
+    def __init__(self, parent_builder):
+        self.parent_builder = parent_builder
 
-    def remove(self):
-        for obj in self.removed_objects:
-            MapperRegistry.get_mapper(obj).remove(obj)
+    def called(self, name: str):
+        self.parent_builder.params['name'] = name
+        return self
 
-    @staticmethod
-    def new_current():
-        __class__.set_current(UnitOfWork())
+    def addressed(self, email: str=''):
+        self.parent_builder.params['email'] = email
+        return self.parent_builder
+
+
+
+class SpecialInfoBuilder:
+    """Специфичная для каждой категории пользователей."""
+    def __init__(self, parent_builder):
+        self.parent_builder = parent_builder
+
+    def typed(self, category: str):
+        self.parent_builder.params['category'] = category
+        return self.parent_builder
+
+
+class Student(User):
+    count = -1
+
+    def __init__(self, params: dict):
+        super().__init__(params)
+        self.__class__.count += 1
+        self.id = self.count
+        self._studied_courses = []
+
+    @property
+    def studied_courses(self):
+        return self._studied_courses
+
+    def add_studied_courses(self, course):
+        self._studied_courses.append(course)
+
+    def __str__(self):
+        return f'{self.id} - {self.name} - {self.category}'
+
+
+class StudentBuilder(UserBuilder):
+    def build(self):
+        student = Student(self.params)
+        return student
+
+class Teacher(User):
+    count = -1
+
+    def __init__(self, params: dict):
+        super().__init__(params)
+        self.__class__.count += 1
+        self.id = self.count
+        self.taught_courses = []
+
+    def add_taught_courses(self, taught_courses:list):
+        self.taught_courses.extend(taught_courses)
+
+    def __str__(self):
+        return f'{self.id} - {self.name} - {self.category}'
+
+class TeacherBuilder(UserBuilder):
+    def build(self):
+        teacher = Teacher(self.params)
+        return teacher
+
+class UserFactory:
+    categories = {
+        'teacher': TeacherBuilder,
+        'student': StudentBuilder
+    }
 
     @classmethod
-    def set_current(cls, unit_of_work):
-        cls.current.unit_of_work = unit_of_work
+    def create_user(cls, category: str, name: str, email: str=''):
+        user = cls.categories[category](). \
+                personal_info. \
+                    called(name). \
+                    addressed(email). \
+                special_info. \
+                    typed(category). \
+                build()
+        return user
 
-    @classmethod
-    def get_current(cls):
-        return cls.current.unit_of_work
+#############################  SITE MODELS  #########################################
 
+
+class Site:
+    """Класс, описывающий сайт."""
+    def __init__(self):
+        self._courses = []
+        self._course_categories = []
+        self._teachers = []
+        self._students = []
+
+    def add_course(self, course: Course):
+        """Добавляет новый курс."""
+        self._courses.append(course)
+
+    def create_course(self, type: str, name: str, category: Category):
+        """Добавляет курс в список."""
+        new_course = CourseFactory.create_course(type, name, category)
+        self.add_course(new_course)
+        return new_course
+
+    def create_course_category(self, name: str, parent: Component=None):
+        """Создает новую категорию курсов."""
+        new_category = CategoryFactory.create_category(name, parent)
+        self._course_categories.append(new_category)
+        return new_category
+
+    def create_user(self, category: str, name: str):
+        """Добавляет ппользователя в список студентов или преподавателей."""
+        new_user = UserFactory.create_user(category, name)
+        if category == 'student':
+            self._students.append(new_user)
+        else:
+            self._teachers.append(new_user)
+        return new_user
+
+    def get_courses(self) -> List[Type[Course]]:
+        """Возвращает список курсов."""
+        return self._courses
+
+    def get_course_by_name(self, name) -> Type[Course]:
+        """Вщзвращает курс по названию."""
+        for item in self._courses:
+            if item.name == name:
+                return item
+        return None
+
+    def get_course_by_id(self, id) -> Type[Course]:
+        """Вщзвращает курс по ID."""
+        for item in self._courses:
+            if item.id == id:
+                return item
+        return None
+
+    def get_categories(self) -> List[Type[Category]]:
+        """Возвращает список категорий курсов."""
+        return self._course_categories
+
+    def get_category_by_id(self, id: str) -> Type[Category]:
+        """Возвращает категорию по id."""
+        for item in self._course_categories:
+            if item.id == id:
+                return item
+            else:
+                return None
+
+    def get_category_by_name(self, name: str) -> Type[Category]:
+        """Возвращает категорию по имени."""
+        for item in self._course_categories:
+            if item.name == name:
+                return item
+            else:
+                return None
+
+    def get_teachers(self) -> List[Type[Teacher]]:
+        """Возвращает список преподавателей."""
+        return self._teachers
+
+    def get_students(self) -> List[Type[Student]]:
+        """Возвращает список преподавателей."""
+        return self._students
+
+    def get_student_by_name(self, name: str) -> Type[Student]:
+        """Возвращает объект студента по имени."""
+        for item in self._students:
+            if item.name == name:
+                return item
+            else:
+                return None
+
+
+####################  DATAMAPPER  #####################################
 
 class RecordNotFoundException(Exception):
     def __init__(self, message):
@@ -213,62 +382,179 @@ class DbRemoveException(Exception):
         super().__init__(f'DB remove error: {message}')
 
 
+class StudentMapper:
+    def __init__(self, connection):
+        self.connection = connection
+        self.cursor = connection.cursor()
+        self.table = 'students'
+
+    def find_by_id(self, id):
+        statement = f'SELECT * FROM {self.table} WHERE id=?'
+        self.cursor.execute(statement, (id,))
+        result = self.cursor.fetchone()
+        if result:
+            return Student(*result)
+        else:
+            raise RecordNotFoundException(f'Record with id={id} not found')
+
+    def insert(self, obj):
+        statement = f'INSERT INTO {self.table} (id, name) VALUES (?, ?)'
+        self.cursor.execute(statement, (obj.id, obj.name))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbInsertException(err.args)
+
+    def update(self, obj):
+        statement = f'UPDATE {self.table} SET name=? WHERE id=?'
+        self.cursor.execute(statement, (obj.name, obj.id))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbUpdateException(err.args)
+
+    def remove(self, obj):
+        statement = f'DELETE FROM {self.table} WHERE id=?'
+        self.cursor.execute(statement, (obj.id,))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbRemoveException(err.args)
+
+
+class CategoryMapper:
+    def __init__(self, connection):
+        self.connection = connection
+        self.cursor = connection.cursor()
+        self.table = 'categories'
+
+    def find_by_id(self, id):
+        statement = f'SELECT * FROM {self.table} WHERE id=?'
+        self.cursor.execute(statement, (id,))
+        result = self.cursor.fetchone()
+        if result:
+            return Category(*result)
+        else:
+            raise RecordNotFoundException(f'Record with id={id} not found')
+
+    def insert(self, obj):
+        statement = f'INSERT INTO {self.table} (name, parent_id) VALUES (?, ?)'
+        parent_name = obj.parent.name if obj.parent else None
+        self.cursor.execute(statement, (obj.name, parent_name))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbInsertException(err.args)
+
+    def update(self, obj):
+        statement = f'UPDATE {self.table} SET name=? WHERE id=?'
+        self.cursor.execute(statement, (obj.name, obj.id))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbUpdateException(err.args)
+
+    def remove(self, obj):
+        statement = f'DELETE FROM {self.table} WHERE id=?'
+        self.cursor.execute(statement, (obj.id,))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbRemoveException(err.args)
+
+
+class CourseMapper:
+    def __init__(self, connection):
+        self.connection = connection
+        self.cursor = connection.cursor()
+        self.table = 'courses'
+
+    def find_by_id(self, id):
+        statement = f'SELECT * FROM {self.table} WHERE id=?'
+        self.cursor.execute(statement, (id,))
+        result = self.cursor.fetchone()
+        if result:
+            return Course(*result)
+        else:
+            raise RecordNotFoundException(f'Record with id={id} not found')
+
+    def insert(self, obj):
+        statement = f'INSERT INTO {self.table} (name, category_id) VALUES (?, ?)'
+        self.cursor.execute(statement, (obj.name, obj.parent.name))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbInsertException(err.args)
+
+    def update(self, obj):
+        statement = f'UPDATE {self.table} SET name=? WHERE id=?'
+        self.cursor.execute(statement, (obj.name, obj.id))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbUpdateException(err.args)
+
+    def remove(self, obj):
+        statement = f'DELETE FROM {self.table} WHERE id=?'
+        self.cursor.execute(statement, (obj.id,))
+        try:
+            self.connection.commit()
+        except Exception as err:
+            raise DbRemoveException(err.args)
+
+
+class MapperRegistry:
+    @staticmethod
+    def get_mapper(obj):
+        if isinstance(obj, Student):
+            return StudentMapper(connection)
+        if (obj.__class__ == Category):
+            return CategoryMapper(connection)
+        if isinstance(obj, Course):
+            return CourseMapper(connection)
+        else:
+            print('FATAL')
+
+
 if __name__ == '__main__':
     connection = sqlite3.connect('patterns.db')
     site = Site()
+    UnitOfWork.new_current()
+    UnitOfWork.get_current().set_mapper_registry(MapperRegistry)
     try:
-            UnitOfWork.new_current()
-            new_cat1 = site.create_course_category('programming')
-            print('new_cat1: ', new_cat1)
-            print(new_cat1.__dir__())
-            new_cat1.mark_new()
-            new_cat2 = site.create_course_category('web', new_cat1)
-            new_cat2.mark_new()
-            new_cat3 = site.create_course_category('python', new_cat2)
-            new_cat1.mark_new()
+        new_cat1 = site.create_course_category('programming')
+        new_cat1.mark_new()
+        new_cat2 = site.create_course_category('web', new_cat1)
+        new_cat2.mark_new()
+        new_cat3 = site.create_course_category('python', new_cat2)
+        new_cat1.mark_new()
 
-            category_mapper = Mapper(connection, 'categories')
-            UnitOfWork.get_current().commit()
+        new_course1 = site.create_course('online', 'django', new_cat3)
+        new_course1.mark_new()
+        new_course2 = site.create_course('online', 'flask', new_cat3)
+        new_course2.mark_new()
+        new_course3 = site.create_course('online', 'php', new_cat2)
+        new_course3.mark_new()
 
-    except Exception as e:
-        print('Error: ', e.args)
+        new_student1 = site.create_user('student', 'Sam')
+        new_student1.mark_new()
+        new_student2 = site.create_user('student', 'Bob')
+        new_student2.mark_new()
+        new_student3 = site.create_user('student', 'Pit')
+        new_student3.mark_new()
+
+        UnitOfWork.get_current().commit()
+
+
+    except Exception as err:
+        print('Error: ', err.args)
     finally:
         UnitOfWork.get_current()
 
     print(UnitOfWork.get_current())
 
-    try:
-            new_course1 = site.create_course('online', 'django', new_cat3)
-            new_course1.mark_new()
-            new_course2 = site.create_course('online', 'flask', new_cat3)
-            new_course2.mark_new()
-            new_course3 = site.create_course('online', 'php', new_cat2)
-            new_course3.mark_new()
 
-            course_mapper = Mapper(connection, 'courses')
-            UnitOfWork.get_current().commit()
-
-    except Exception as e:
-        print('Error: ', e.args)
-    finally:
-        UnitOfWork.get_current()
-
-    print(UnitOfWork.get_current())
-
-    try:
-            new_student1 = site.create_user('student', 'Sam')
-            new_student1.mark_new()
-            new_student2 = site.create_user('student', 'Bob')
-            new_student2.mark_new()
-            new_student3 = site.create_user('student', 'Pit')
-            new_student3.mark_new()
-
-            student_mapper = Mapper(connection, 'students')
-            UnitOfWork.get_current().commit()
-
-    except Exception as e:
-        print('Error: ', e.args)
-    finally:
-        UnitOfWork.get_current()
-
-    print(UnitOfWork.get_current())
+"""
+Если не передавать id студента:
+Error:  ('Incorrect number of bindings supplied. The current statement uses 1, and there are 3 supplied.',)
+"""
