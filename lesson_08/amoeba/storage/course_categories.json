@@ -1,0 +1,14 @@
+[
+  {
+    "category_name": "Programming",
+    "sub_category": "WEB"
+  },
+  {
+    "category_name": "WEB",
+    "sub_category": "Python"
+  },
+  {
+    "category_name": "Python",
+    "sub_category": "Django"
+  }
+]
